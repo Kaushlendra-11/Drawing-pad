@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Simple Drawing Pad</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            /* Prevent scrolling on touch devices while drawing */
+            touch-action: none;
+        }
+        canvas {
+            cursor: crosshair;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl">
+        
+        <!-- Toolbar -->
+        <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex flex-wrap items-center justify-center md:justify-between gap-4">
+            <h1 class="text-xl font-bold text-gray-800 dark:text-white">Drawing Pad</h1>
+            
+            <!-- Controls -->
+            <div class="flex items-center flex-wrap justify-center gap-4 md:gap-6">
+                <!-- Color Picker -->
+                <div class="flex items-center gap-2">
+                    <label for="color-picker" class="text-sm font-medium text-gray-600 dark:text-gray-300">Color:</label>
+                    <input type="color" id="color-picker" value="#000000" class="w-10 h-10 p-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md cursor-pointer">
+                </div>
+
+                <!-- Brush Size Slider -->
+                <div class="flex items-center gap-2">
+                    <label for="brush-size" class="text-sm font-medium text-gray-600 dark:text-gray-300">Size:</label>
+                    <input type="range" id="brush-size" min="2" max="50" value="5" class="w-24 md:w-32 cursor-pointer">
+                    <span id="brush-size-value" class="text-sm text-gray-700 dark:text-gray-200 w-6 text-center">5</span>
+                </div>
+
+                <!-- Clear Button -->
+                <button id="clear-btn" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50">
+                    Clear
+                </button>
+            </div>
+        </div>
+
+        <!-- Canvas for Drawing -->
+        <div class="w-full h-[60vh] md:h-[70vh] bg-white">
+             <canvas id="drawing-canvas"></canvas>
+        </div>
+       
+    </div>
+
+    <script>
+        window.addEventListener('load', () => {
+            // --- DOM Element References ---
+            const canvas = document.getElementById('drawing-canvas');
+            const colorPicker = document.getElementById('color-picker');
+            const brushSizeSlider = document.getElementById('brush-size');
+            const brushSizeValue = document.getElementById('brush-size-value');
+            const clearBtn = document.getElementById('clear-btn');
+            
+            // Get the 2D rendering context for the canvas
+            const ctx = canvas.getContext('2d');
+
+            // --- State Variables ---
+            let isDrawing = false;
+            let lastX = 0;
+            let lastY = 0;
+
+            /**
+             * Sets the canvas dimensions to fill its container.
+             * This makes the canvas responsive.
+             */
+            function resizeCanvas() {
+                const parent = canvas.parentElement;
+                canvas.width = parent.clientWidth;
+                canvas.height = parent.clientHeight;
+                // Set a white background for the canvas
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            // Initial resize
+            resizeCanvas();
+
+            /**
+             * The main drawing function.
+             * @param {MouseEvent | TouchEvent} e - The event object.
+             */
+            function draw(e) {
+                if (!isDrawing) return; // Stop the function if not drawing
+
+                // Set drawing properties
+                ctx.strokeStyle = colorPicker.value;
+                ctx.lineWidth = brushSizeSlider.value;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+
+                // Get current coordinates
+                const { x, y } = getCoordinates(e);
+                
+                // Draw a line from the last point to the current point
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+
+                // Update the last coordinates
+                [lastX, lastY] = [x, y];
+            }
+
+            /**
+             * Gets the correct x and y coordinates from a mouse or touch event.
+             * @param {MouseEvent | TouchEvent} e - The event object.
+             * @returns {{x: number, y: number}} - The coordinates relative to the canvas.
+             */
+            function getCoordinates(e) {
+                const rect = canvas.getBoundingClientRect();
+                if (e.touches) { // Touch event
+                    return {
+                        x: e.touches[0].clientX - rect.left,
+                        y: e.touches[0].clientY - rect.top
+                    };
+                } else { // Mouse event
+                    return {
+                        x: e.clientX - rect.left,
+                        y: e.clientY - rect.top
+                    };
+                }
+            }
+
+            /**
+             * Handles the start of a drawing action (mouse down or touch start).
+             * @param {MouseEvent | TouchEvent} e - The event object.
+             */
+            function startDrawing(e) {
+                e.preventDefault(); // Prevent default actions like scrolling
+                isDrawing = true;
+                const { x, y } = getCoordinates(e);
+                [lastX, lastY] = [x, y];
+            }
+
+            /**
+             * Handles the end of a drawing action (mouse up or touch end).
+             */
+            function stopDrawing() {
+                isDrawing = false;
+            }
+
+            /**
+             * Clears the entire canvas.
+             */
+            function clearCanvas() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                // Redraw the white background
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            // --- Event Listeners ---
+
+            // Mouse events
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseleave', stopDrawing); // Stop drawing if mouse leaves canvas
+
+            // Touch events for mobile support
+            canvas.addEventListener('touchstart', startDrawing);
+            canvas.addEventListener('touchmove', draw);
+            canvas.addEventListener('touchend', stopDrawing);
+            
+            // Toolbar controls
+            brushSizeSlider.addEventListener('input', (e) => {
+                brushSizeValue.textContent = e.target.value;
+            });
+            clearBtn.addEventListener('click', clearCanvas);
+
+            // Resize canvas when window size changes
+            window.addEventListener('resize', resizeCanvas);
+        });
+    </script>
+</body>
+</html>
